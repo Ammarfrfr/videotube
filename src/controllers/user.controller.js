@@ -105,7 +105,7 @@ const registerUser = asyncHandler( async (req, res) => {
         new ApiResponse(200, createdUser, "User registered Successfully")
     )
 
-} )
+})
 
 const loginUser = asyncHandler( async (req, res) => {
     // take your input from req body
@@ -253,9 +253,127 @@ const refreshAccessToken = asyncHandler(async(req, res)=>{
     }
 })
 
+const changeCurrentPassword = 
+asyncHandler( async (req, res) => {
+    const {oldPassword, newPassword, confirmPassword } = req.body
+    
+    
+    const user = await User.findById(req.user?._id)
+    const isPasswordCorrect = await user.isPassword(oldPassword)
+
+    if(!isPasswordCorrect){
+        throw new ApiError(401, "The old password is incorrect")
+    }
+    
+    if(newPassword === confirmPassword){
+        throw new ApiError(401, "The new password and the confirm Password is not same")
+    }
+
+    user.password = newPassword
+    await user.save({validateBeforeSave: false})
+
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password is Changed Successfully"))
+})
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res
+    .status(200)
+    .json(200, req.user, "Current user fetched successfully")
+})
+
+const updateAccountDetails = asyncHandler(async(req, res) => {
+    const {fullName, email} = req.body
+
+    if(!fullName || !email){
+        throw new ApiError(401, "Change atleast Full Name or Email to Apply changes")
+    }
+    
+    const user = User.findByIdAndUpdate(
+        req.user?._id, 
+        {
+            $set:{
+                // two ways to write this shit
+                fullName,
+                email: email
+            }
+        }, 
+        {new: true})
+        .select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account Details Updated Successfully"))
+})
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+
+    const avatarLocalPath = req.file?.path
+
+    if(!avatarLocalPath){
+        throw new ApiError(401, "Wasnt able to able to find the local path of Avatar")
+    }
+    
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if(!(avatar.url)){
+        throw new ApiError(401, "Error while uploading Avatar File")
+    }
+
+    await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                avatar: avatar.url
+            }
+        },
+        {new: true}
+    )
+    .select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, "Avatar is updated Successfully"))
+})
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+    const coverImageLocalPath = await req.file?.path
+
+    if(!coverImageLocalPath){
+        throw new ApiError(401, "Cover Image is missing")
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    if(!coverImage){
+        throw new ApiError(401, "Cover Image wasn't updated")
+    }
+
+    await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                coverImage: coverImage.url
+            }
+        },
+        {new: true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, "Cover Image was updated Successfully"))
+})
+
 export {
     registerUser,
     loginUser,
     logOutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage
 }
