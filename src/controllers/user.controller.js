@@ -368,7 +368,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
     const {username} = req.params
-    // req.params is used to get dynamic routes like /:username or /:id (here dynamic means variable)
+    // req.params is used to get dynamic routes like /:username or /:id (here dynamic means variable part of the route)
 
     if(!username?.trim()){
         throw new ApiError(400, "Username is required")
@@ -413,6 +413,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                     // $cond is used to add conditional statements
                     $cond: {
                         // check if req.user._id is in the subscribers array
+                        // here req.user?._id means that we are requesting user id from the request object if it exists 
                         if: {$in: [req.user?._id, "$subscribers.subscriber"]},
                         then: true,
                         else: false
@@ -420,7 +421,8 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                 }
             }
         },
-        {
+        {   
+            // project is used to select specific fields from the document and exclude others
             $project: {
                 fullName: 1,
                 subscriberCount: 1,
@@ -440,6 +442,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     return res
     .status(200)
     .json(
+        // here is channel[0] means the first element of the array which is user object
         new ApiResponse(200, channel[0], "Channel Fetched Successfully")
     )
 })
