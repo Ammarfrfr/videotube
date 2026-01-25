@@ -308,7 +308,7 @@ const updateAccountDetails = asyncHandler(async(req, res) => {
     .json(new ApiResponse(200, user, "Account Details Updated Successfully"))
 })
 
-const updateUserAvatar = asyncHandler(async (req, res) => {
+const updateUserAvatar = asyncHandler(async (req, res) => { 
 
     const avatarLocalPath = req.file?.path
 
@@ -322,7 +322,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Error while uploading Avatar File")
     }
 
-    await User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set:{
@@ -335,7 +335,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
     return res
     .status(200)
-    .json(new ApiResponse(200, "Avatar is updated Successfully"))
+    .json(new ApiResponse(200, user, "Avatar is updated Successfully"))
 })
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {
@@ -351,7 +351,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Cover Image wasn't updated")
     }
 
-    await User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set:{
@@ -363,7 +363,85 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
     return res
     .status(200)
-    .json(new ApiResponse(200, "Cover Image was updated Successfully"))
+    .json(new ApiResponse(200, user, "Cover Image was updated Successfully"))
+})
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const {username} = req.params
+    // req.params is used to get dynamic routes like /:username or /:id (here dynamic means variable)
+
+    if(!username?.trim()){
+        throw new ApiError(400, "Username is required")
+    }
+
+    const channel = await User.aggregate([
+        {
+            // match is used to filter documents
+            $match: {
+                username: username?.toLowerCase()
+            }
+        },
+        {
+            // lookup is used to join two collections
+            $lookup: {
+                from: "subscriptions",   // the database changes the first alphabet and makes it plural
+                localField: "_id",          // field from User collection
+                foreignField: "channel",    // field from Subscription collection
+                as: "subscibers"           // name of the array field to be added to the User documents
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {   
+            // addFields is used to add new fields to the document
+            $addFields:{
+                // name of the new field
+                subscriberCount: {
+                    // size is used to get the size of an array
+                    $size: "$subscribers"       // size of the subscribers array
+                },
+                channelSubscribedToCount: {
+                    $size: "$subscriberTo"
+                },
+                isSubscribed: {
+                    // $cond is used to add conditional statements
+                    $cond: {
+                        // check if req.user._id is in the subscribers array
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                fullName: 1,
+                subscriberCount: 1,
+                username: 1,
+                isSubscribed: 1,
+                channelSubscribedToCount: 1,
+                avatar: 1,
+                coverImage: 1
+            }
+        }
+    ])
+
+    if(!channel?.length){
+        throw new ApiError(404, "Channel does not exists")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, channel[0], "Channel Fetched Successfully")
+    )
 })
 
 export {
@@ -375,5 +453,6 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile
 }
