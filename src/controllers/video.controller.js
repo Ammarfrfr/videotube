@@ -9,12 +9,50 @@ import { upload } from "../middlewares/multer.middleware.js"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
+    // in sortType we have desc because by default we want latest videos first and in sortBy we have createdAt because we want to sort by creation time
+    const { page = 1, limit = 10, query, sortBy = "createdAt", sortType = "desc", userId } = req.query
     //TODO: get all videos based on query, sort, pagination
 
-    /*
+    // converting to number because query params are always strings
+    const pageNumber = Number(page) 
+    const limitNumber = Number(limit) 
 
-    */
+    // filter to show only public videos
+    const filter = {
+      isPublished: true
+    }
+
+    // if userId is present in query params, then filter videos by that userId
+    // this if else is used to filter videos by userId if userId is provided in query params and is a valid ObjectId then only show videos of that user
+    if (userId && isValidObjectId(userId)) {
+      filter.owner = userId
+      // this line means filter by owner field in video model which is a reference to user model
+    }
+
+    // search by title or description
+      // query is the search term from req.query
+      // filter.$or is used to search in multiple fields which means either title or description
+      // regex is used for partial match and i is for case insensitive which is used in YouTube and all that shit
+      // options: 'i' means case insensitive and the multiple options in $options is liek "i" and "m" which is used for multiline search and "s" for dotall mode which is used for matching new lines with dot(.) operator etc 
+    if(query){
+      filter.$or = [
+        {title: { $regex: query, $options: 'i'}},
+        {description: {$regex: query, $options: 'i'}}
+      ]
+    }
+
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        "Videos fetched successfully",
+      )
+    )
+
+
+    // countDocuments is used to get total number of documents matching the filter and is used for pagination
+    const totalVideos = await Video.countDocuments(filter)
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -181,6 +219,29 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+    // what is toggle publish status for in a video? 1. Published, but published what? Ans: Published means visible to everyone, Unpublished means only visible to owner
+    // So how can i do this ? Ans: by a boolean field isPublished in video model which is true when published and false when unpublished
+    // so first get the video by id, then toggle the isPublished field and save the video
+
+    if(!videoId){
+      throw new ApiError(400, "Video ID is required")
+    }
+
+    const video = await Video.findById(videoId)
+    if(!video){
+      throw new ApiError(404, "Video not found")
+    }
+
+    video.isPublished = !video.isPublished
+    // what this does is if isPublished is true, it becomes false and if false, it becomes true
+    await video.save()
+    // why we will use select here 
+
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(200, video, `Video is now ${video.isPublished ? "Published" : "Unpublished"}`)
+    )
 })
 
 export {
