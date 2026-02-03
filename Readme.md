@@ -39,27 +39,27 @@ VideoTube is a **MERN stack-based video sharing platform** inspired by YouTube, 
 ## Project Structure
 
 VideoTube/
+├── backend
+│   ├── controllers
+│   ├── models
+│   ├── routes
+│   ├── middlewares
+│   └── server.js
 │
-├── backend/
-│ ├── controllers/
-│ ├── models/
-│ ├── routes/
-│ ├── middlewares/
-│ └── server.js
+├── frontend
+│   ├── src
+│   ├── public
+│   └── package.json
 │
-├── frontend/
-│ ├── src/
-│ ├── public/
-│ └── package.json
-│
-├── screenshots/
-│ ├── home.png
-│ ├── login.png
-│ ├── register.png
-│ ├── video-player.png
-│ └── profile.png
+├── screenshots
+│   ├── home.png
+│   ├── login.png
+│   ├── register.png
+│   ├── video-player.png
+│   └── profile.png
 │
 └── README.md
+
 
 ---
 
