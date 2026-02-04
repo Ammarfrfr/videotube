@@ -40,19 +40,37 @@ const getAllVideos = asyncHandler(async (req, res) => {
         {description: {$regex: query, $options: 'i'}}
       ]
     }
+    // we use object to store sort options dynamically
+    let sortOptions = {}
+    sortOptions[sortBy] = sortType === "asc"? 1 : -1;
+
+    // countDocuments is used to get total number of documents matching the filter and is used for pagination
+    const totalVideos = await Video.countDocuments(filter)
+
+    const videos = await Video.find(filter)
+      .sort(sortOptions)
+      .skip( (pageNumber - 1) * limitNumber )  // skip is used to skip the documents for pagination. For example, if pageNumber is 2 and limitNumber is 10, then skip will be (2-1)*10 = 10, which means skip first 10 documents
+      .limit(limitNumber)   // limit is used to limit the number of documents returned
+      .populate("owner", "username avatar") // Populating owner field with username and avatar only from User model
+      // populating owner field with username and avatar only
 
     return res
     .status(200)
     .json(
       new ApiResponse(
         200,
+        {
+          videos, pagination: {
+            totalVideos,
+            currentPage: pageNumber,
+            totalPages: Math.ceil(totalVideos / limitNumber),
+            limit: limitNumber
+          }
+        },
         "Videos fetched successfully",
       )
     )
-
-
-    // countDocuments is used to get total number of documents matching the filter and is used for pagination
-    const totalVideos = await Video.countDocuments(filter)
+    
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
