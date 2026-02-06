@@ -16,14 +16,33 @@ export default function Home(){
     const fetchVideos = async () => {
       setLoading(true)
       try {
+        // Fetch public feed
         const res = await api.get('/videos')
-        const list = res?.data?.data?.videos || res?.data?.videos || []
-        setVideos(list)
-        // If no published videos are returned but the user is logged in, redirect to My Videos
-        // where the user can manage their uploads (useful when uploads aren't appearing on Home)
-        if ((list.length === 0) && user) {
-          navigate('/my-videos')
+        const feed = res?.data?.data?.videos || res?.data?.videos || []
+
+        // Also try to fetch the current user's uploads (some deployments return different datasets)
+        let mine = []
+        try {
+          const mineRes = await api.get('/videos', { params: { userId: user?._id, page: 1, limit: 50 } })
+          mine = mineRes?.data?.data?.videos || mineRes?.data?.videos || []
+        } catch (e) {
+          // ignore: backend may not return owner videos via this endpoint
+          console.debug('Could not fetch user-specific videos', e?.response?.data || e.message || e)
         }
+
+        // merge feed + mine, preferring feed order, and dedupe by _id
+        const combined = []
+        const seen = new Set()
+        ;[...feed, ...mine].forEach(v => {
+          if (!v) return
+          if (!seen.has(v._id)) {
+            seen.add(v._id)
+            combined.push(v)
+          }
+        })
+
+        setVideos(combined)
+
       } catch (err) {
         // show friendly message and attempt a fallback detailed fetch to help debugging
         const msg = err?.response?.data?.message || err.message || String(err)
