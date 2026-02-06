@@ -3,6 +3,7 @@ import api from '../api'
 import VideoCard from '../components/VideoCard'
 import { useAuth } from '../contexts/AuthContext'
 import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import './Home.css'
 
 export default function Home(){
@@ -18,6 +19,11 @@ export default function Home(){
         const res = await api.get('/videos')
         const list = res?.data?.data?.videos || res?.data?.videos || []
         setVideos(list)
+        // If no published videos are returned but the user is logged in, redirect to My Videos
+        // where the user can manage their uploads (useful when uploads aren't appearing on Home)
+        if ((list.length === 0) && user) {
+          navigate('/my-videos')
+        }
       } catch (err) {
         setError(err?.response?.data?.message || err.message)
       } finally {

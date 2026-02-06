@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import api from '../api'
 import './Upload.css'
+import { useNavigate } from 'react-router-dom'
 
 export default function Upload(){
   const [title, setTitle] = useState('')
@@ -21,6 +22,9 @@ export default function Upload(){
 
       const res = await api.post('/videos', form, { headers: {'Content-Type': 'multipart/form-data'} })
       setMessage('Uploaded successfully')
+      // after upload, redirect to My Videos so the user can see/manage their upload
+      // (Home shows published videos only; My Videos lists the owner's uploads)
+      navigate('/my-videos')
     } catch (err){
       setMessage(err?.response?.data?.message || err.message)
     }
